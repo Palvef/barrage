@@ -1,0 +1,127 @@
+<!-- 伪代码示例 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Video Stream</title>
+	<style>
+		#imageContainer{
+			margin-left: -2%;
+			overflow: hidden;
+      		width: 100vw;
+      		height: 100vh;
+		}
+
+		#hihi {
+	
+      		object-fit: cover;
+      		width: 100%;
+      		height: 100%;
+    	}
+
+		#danmu-container {
+			position: absolute;
+			top:0;
+			left:0;
+			width:100%;
+			height:100%;
+			display: flex;
+			flex-direction: column;
+		}
+
+		.danmu {
+			position: absolute;
+			white-space: nowrap;
+			font-size: 16px;
+			color: red;
+			margin: 0;
+			padding: 0;
+		}
+
+		#barrageInput {
+			width: 80%;
+			border: 1px solid #ccc;
+			border-radius: 5px;
+		}
+		#barrageInput:focus {
+			outline: none;
+		}
+
+		button {
+			width: 20%;
+			background-color: #007BFF;
+			color:white;
+			border: none;
+			border-radius: 5px;
+			cursor: pointer;
+		}
+		button:hover{
+			background-color: #0056b3;
+		}
+	</style>
+</head>
+<body>
+	<div id="imageContainer" >
+		<img id = "hihi">
+	</div>
+	<div id="danmu-container">
+		<div style="display: flex; justify-content: space-between;">
+	<input type="text" id="barrageInput" placeholder="type here">
+	<button onclick="sendBarrage()">Send Barrage</button>
+		</div>
+    <!--video id="videoPlayer" controls-->
+	</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
+    <script>
+        const socket = io('http://172.20.10.2:5000/video_stream', {transports: ['websocket']});
+
+		const hihiimg = document.getElementById('hihi');
+
+		socket.on('video_frame', data => {
+		    const dataArray = new Uint8Array(data.image);
+
+
+    		const charArray = Array.prototype.map.call(dataArray, byte => String.fromCharCode(byte));
+    		const imageSrc = 'data:image/jpeg;base64,' + btoa(charArray.join(''));
+			hihiimg.src = imageSrc;
+		});
+		var container = document.getElementById('imageContainer');
+		window.addEventListener('resize', function() {
+			container.style.width = window.innerWidth + 'px';
+			container.style.height = window.innerHeight + 'px';
+		});
+
+		function sendBarrage() {
+			var message = document.getElementById('barrageInput').value;
+			socket.emit('send_barrage', {'message':message}, namespace='/video_stream');
+			document.getElementById('barrageInput').value = '';
+		}
+		const danmuContainer = document.getElementById('danmu-container');
+		socket.on('broadcast_barrage', function(data) {
+			const danmu = document.createElement('p');
+			danmu.className = 'danmu';
+			danmu.textContent = data['message'];
+			danmuContainer.appendChild(danmu);
+
+			const topPosition = Math.random()*(danmuContainer.clientHeight - danmu.clientHeight);
+			danmu.style.top = `${topPosition}px`;
+			
+			danmu.animate(
+				[{left:'100%'}, {left:'0' }],
+				{duration: 8000, iterations: 1}
+			).onfinish = () => {
+				width = document.getElementById('imageContainer').clientWidth;
+				danmu.animate(
+					[{left:'0'}, {left:`-${danmu.clientWidth}px` }],
+					{duration: danmu.clientWidth/width * 8000, iterations: 1}
+				).onfinish = () => {
+					danmu.remove();
+				};
+			}
+        });
+    </script>
+</body>
+</html>
+
